@@ -2,42 +2,34 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import re
-import json
+
+headers = {'User-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
 url = "https://m2.ru/moskva/nedvizhimost/kupit-kvartiru/?pageNumber="
+html_text = requests.get(url, headers=headers).text
+soup = BeautifulSoup(html_text, 'lxml')
 
-max_pages = 9999
+page_nav = soup.find_all('span', class_='base-module__text___3Z3Vp')
+count_page = int(page_nav[len(page_nav)-2].text)
 
 
 d = {}
 id = 0
-for l in range(max_pages):
+for l in range(count_page):
     cur_url = url + str(l + 1)
     print('Парсинг страницы №:', (l + 1))
-    html_text = requests.get(cur_url).text
-    soup = BeautifulSoup(html_text, 'lxml')
     info = soup.find_all('div', class_="LayoutSnippet__generalInfo")
-
-    page_nav = soup.find_all('a', class_ = 'base-module__base___7FUQ1 base-module__base-text____L6Jb base-module__button___3TuZj base-module__size-m___2sS92 paginator-button-module__paginator-button___20KL4 paginator-button-module__active___3uii7')
-    text = [i.text for i in page_nav]
-    href = [i.get('href') for i in page_nav]
-    a, *text = text
-    print(href)
-    print(a)
-    if a == str(l + 1):
-        for item in range(len(info)):
-            ad = info[item]
-            id += 1
-            d[id] = {}
-            price = ad.find('div', class_='Price').text.replace(u'\xa0', '').replace(u'\u2009', '')
-            address = ad.find('div', class_='LayoutSnippet__address').text.replace(u'\xa0', '').replace(u'\u2009', '')
-            meter = ad.find('div', class_="LayoutSnippet__priceDetail").text.replace(u'\xa0', '').replace(u'\u2009', '')
-            d[id]["Цена"] = float(re.sub("[^0-9]", "", price))
-            d[id]["Адрес"] = address
-            d[id]["Цена за метр"] = float(re.sub("[^0-9]", "", meter))
-    else:
-        print("Максимальный номер страницы: %d" % (l + 1))
-        break
+    count = 0
+    for item in range(len(info)):
+        ad = info[item]
+        id += 1
+        d[id] = {}
+        price = ad.find('div', class_='Price').text.replace(u'\xa0', '').replace(u'\u2009', '')
+        address = ad.find('div', class_='LayoutSnippet__address').text.replace(u'\xa0', '').replace(u'\u2009', '')
+        meter = ad.find('div', class_="LayoutSnippet__priceDetail").text.replace(u'\xa0', '').replace(u'\u2009', '')
+        d[id]["Цена"] = float(re.sub("[^0-9]", "", price))
+        d[id]["Адрес"] = address
+        d[id]["Цена за метр"] = float(re.sub("[^0-9]", "", meter))
 
 
 df = pd.DataFrame(d)
